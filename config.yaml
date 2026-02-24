@@ -1,0 +1,262 @@
+# 代理配置
+port: 8080
+mixed-port: 7890
+# redir-port: 7891
+# tproxy-port: 7892
+socks-port: 1080
+mode: rule
+bind-address: "*"
+ipv6: false
+allow-lan: true
+tcp-concurrent: true
+unified-delay: true
+find-process-mode: strict
+client-fingerprint: chrome
+log-level: error
+
+# 减少移动设备耗电问题
+keep-alive-interval: 15
+keep-alive-idle: 600
+
+# UI
+external-ui: ui
+external-ui-url: "https://gh-proxy.org/github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
+external-controller: "[::]:9090"
+
+geodata-mode: true
+geodata-loader: standard
+geo-auto-update: true
+geo-update-interval: 24
+geox-url:
+  geoip: "https://gh-proxy.org/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.dat"
+  geosite: "https://gh-proxy.org/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
+  # Gitee 仓库镜像：如果上面的链接无法下载，请使用下面的链接
+  # geoip: "https://gitee.com/jackiewuu/unraid/raw/master/geo/geoip-lite.dat"
+  # geosite: "https://gitee.com/jackiewuu/unraid/raw/master/geo/geosite.dat"
+
+# DNS
+dns:
+  nameserver-policy:
+    "geosite:category-ads-all": rcode://success
+
+# ----------------- 机场订阅 start ----------------- #
+proxy-providers:
+  JaysProxies1:
+    type: file
+    path: ./jaysproxies.yaml
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+      timeout: 5000
+      lazy: true
+      expected-status: 204
+# ----------------- 机场订阅 end ----------------- #
+
+# ----------------- 锚点 start ----------------- #
+Default: &Default {type: select, proxies: [🎯 Internet节点,🎯 Local节点,🔰 直连,🚫 阻断]}
+
+InternetProxy: &InternetProxy {type: select, include-all: true, exclude-filter: "Local"}
+
+LocalProxy: &LocalProxy {type: select, include-all: true, exclude-filter: "Internet|Socks5"}
+
+# Fallback: &Fallback {type: fallback, include-all: true, interval: 300, lazy: false}
+
+Block: &Block {type: select, proxies: [🚫 阻断, 🔰 直连]}
+# ----------------- 锚点 end ----------------- #
+
+
+# ----------------- 代理组 start ----------------- #
+proxies:
+  # 直连
+  - { name: "🔰 直连", type: direct, udp: true }
+  # 阻断
+  - { name: "🚫 阻断", type: reject, udp: true }
+
+proxy-groups:
+  # 代理节点
+  - { name: 🎯 Internet节点, <<: *InternetProxy }
+  - { name: 🎯 Local节点, <<: *LocalProxy }
+  # 自定义
+  - { name: ↕️ PT站点, <<: *LocalProxy }
+  - { name: ⚔️ 攻防靶场, <<: *LocalProxy }
+  - { name: 📺 国内媒体, <<: *LocalProxy }
+  - { name: 🧦 Win2Socks, <<: *LocalProxy }
+  # Google
+  - { name: 🔎 Google, <<: *Default }
+  - { name: 🏪 GooglePlay, <<: *Default }
+  # 流媒体 & 音乐
+  - { name: 🎞️ YouTube, <<: *Default }
+  - { name: 🎬 HBO, <<: *Default }
+  - { name: 📽️ Disney, <<: *Default }
+  - { name: 🍿 Netflix, <<: *Default }
+  - { name: 🎧 Spotify, <<: *Default }
+  # Game
+  - { name: 🎮 Steam, <<: *Default }
+  - { name: 🎮 Epic, <<: *Default }
+  - { name: 🎮 PlayStation, <<: *Default }
+  - { name: 🎮 XBOX, <<: *Default }
+  - { name: 🎮 Origin, <<: *Default }
+  - { name: 🕹️ 其他游戏平台, <<: *Default }
+  # 社交媒体
+  - { name: 💓 Tiktok, <<: *Default }
+  - { name: 🦜 Twitter, <<: *Default }
+  - { name: 🗣️ 国外社交平台, <<: *Default }
+  # AI
+  - { name: 🤖 OpenAI, <<: *Default }
+  - { name: 🤖 Gemini, <<: *Default }
+  - { name: 🤖 Apple Intelligence, <<: *Default }
+  - { name: 🤖 其他AI, <<: *Default }
+  # Apple
+  - { name: 🍎 Apple, <<: *Default }
+  - { name: ☁️ iCloud, <<: *Default }
+  # Microsoft
+  - { name: 📥 OneDrive, <<: *Default }
+  - { name: Ⓜ️ Microsoft, <<: *Default }
+  - { name: 🖥️ Github, <<: *Default }
+  # 其他
+  - { name: ☎️ Telegram, <<: *Default }
+  - { name: 💶 PayPal, <<: *Default }
+  - { name: 🔌 Nvidia, <<: *Default }
+  - { name: 🐋 Docker, <<: *Default }
+  - { name: ⏩ Speedtest, <<: *Default }
+  - { name: 🚫 广告拦截, <<: *Block }
+  - { name: ⚙️ 非国内地址, <<: *Default }
+  - { name: 🐟 漏网之鱼, <<: *Default }
+  # ----------------- #代理组 end ----------------- #
+
+
+
+# 在rules下，定义了一组规则，每个规则都有一个类型，一个值，和一个代理组。当请求匹配到某个规则时，会使用规则指定的代理组进行访问。
+# 1.DOMAIN匹配
+#   表示请求的域名规则匹配，下方代码表示如果请求域名是app.biliapi.net，则从“爱奇艺&哔哩哔哩”代理组选择代理服务器
+# 2.DOMAIN-SUFFIX匹配
+#   表示请求的域名后缀规则匹配，下方代码表示如果请求域名后缀是iq.com，则从“爱奇艺&哔哩哔哩”代理组选择代理服务器
+# 3.DOMAIN-KEYWORD匹配
+#   表示请求的域名关键字规则匹配，下方代码表示如果请求域名关键字包含q，则从“漏网之鱼”代理组选择代理服务器。一般是放在整个rules规则最下方。
+# 4.IP-CIDR匹配
+#   表示通过请求IP地址范围规则匹配，下方代码表示：对于 IP 地址在 172.16.0.0 到 172.31.255.255 范围内的请求，Clash 将直接连接，不会通过任何代理服务器，并且在处理这些请求时，不会进行 DNS 解析。这通常用于处理本地或内网的请求。
+# 5.GEOIP匹配
+#   表示通过IP地区归属规则匹配，下方代码表示：对于所有识别为来自中国的 IP 地址的请求，Clash 将通过 “🇨🇳 国内网站” 代理组进行处理。这可以用来实现对国内和国外网站的不同处理，例如，访问国内网站时直接连接，访问国外网站时通过代理服务器。
+
+# ----------------- 规则 start ----------------- #
+rules:
+  # 自定义规则
+  - PROCESS-NAME,Win2Socks.exe,🧦 Win2Socks
+  - DOMAIN-SUFFIX,jays.tech,DIRECT
+  - GEOSITE,category-ads-all,🚫 广告拦截
+  - DOMAIN-KEYWORD,gh-proxy,🔰 直连
+  - DOMAIN-KEYWORD,buuoj.cn,⚔️ 攻防靶场
+  - GEOSITE,tracker,↕️ PT站点
+  - GEOSITE,bilibili,📺 国内媒体
+
+
+  # -------- geosite 直连域名 start -------- #
+  # BT/PT
+  - GEOSITE,category-public-tracker,🔰 直连
+
+  # Apple & Microsoft 的 CN 域名
+  - GEOSITE,apple-cn,🔰 直连
+  - GEOSITE,apple@cn,🔰 直连
+  - GEOSITE,icloud@cn,🔰 直连
+  - GEOSITE,apple-update,🔰 直连
+  - GEOSITE,microsoft@cn,🔰 直连
+
+  # 游戏平台（Steam、Epic、PS等）的 CN 域名（共8个集合）
+  - GEOSITE,steam@cn,🔰 直连
+  - GEOSITE,epicgames@cn,🔰 直连
+  - GEOSITE,xbox@cn,🔰 直连
+  - GEOSITE,category-games-cn,🔰 直连
+  - GEOSITE,category-games@cn,🔰 直连
+  - GEOSITE,category-games-!cn@cn,🔰 直连
+  - GEOSITE,category-game-accelerator-cn,🔰 直连
+  - GEOSITE,category-game-platforms-download@cn,🔰 直连
+
+  # Google 的 CN 域名
+  - GEOSITE,google-play@cn,🔰 直连
+
+  # 其他可直连域名
+  - GEOSITE,private,🔰 直连
+  - GEOSITE,jsdelivr,🔰 直连
+  - GEOSITE,category-ntp,🔰 直连
+  - GEOSITE,category-ddns,🔰 直连
+  - GEOSITE,nvidia@cn,🔰 直连
+  - GEOSITE,paypal@cn,🔰 直连
+  - GEOSITE,cn,🔰 直连
+  # -------- geosite 直连域名 end -------- #
+
+
+  # -------- geosite 代理组 start -------- #
+  # 测速
+  - GEOSITE,category-speedtest,⏩ Speedtest
+  # 游戏
+  - GEOSITE,steam,🎮 Steam
+  - GEOSITE,epicgames,🎮 Epic
+  - GEOSITE,playstation,🎮 XBOX
+  - GEOSITE,xbox,🎮 PlayStation
+  - GEOSITE,origin,🎮 Origin
+  - GEOSITE,category-games-!cn,🕹️ 其他游戏平台
+  - GEOSITE,category-game-platforms-download,🕹️ 其他游戏平台
+  - GEOSITE,category-games,🕹️ 其他游戏平台
+  # AI
+  - GEOSITE,openai,🤖 OpenAI
+  - GEOSITE,google-gemini,🤖 Gemini
+  - GEOSITE,apple-intelligence,🤖 Apple Intelligence
+  - GEOSITE,category-ai-chat-!cn,🤖 其他AI
+  # Apple
+  - GEOSITE,icloud,☁️ iCloud
+  - GEOSITE,apple,🍎 Apple
+  # 流媒体 & 音乐
+  - GEOSITE,hbo,🎬 HBO
+  - GEOSITE,disney,📽️ Disney
+  - GEOSITE,netflix,🍿 Netflix
+  - GEOSITE,youtube,🎞️ YouTube
+  - GEOSITE,spotify ,🎧 Spotify
+  # 社交平台
+  - GEOSITE,tiktok,💓 Tiktok
+  - GEOSITE,twitter,🦜 Twitter
+  - GEOSITE,category-social-media-!cn,🗣️ 国外社交平台
+  # Microsoft
+  - GEOSITE,github,🖥️ Github
+  - GEOSITE,onedrive,📥 OneDrive
+  - GEOSITE,microsoft,Ⓜ️ Microsoft
+  # Google
+  - GEOSITE,google-play,🏪 GooglePlay
+  - GEOSITE,google,🔎 Google
+  # 其他
+  - GEOSITE,paypal,💶 PayPal
+  - GEOSITE,nvidia,🔌 Nvidia
+  - GEOSITE,docker,🐋 Docker
+  # 其他国外域名
+  - GEOSITE,gfw,⚙️ 非国内地址
+  - GEOSITE,geolocation-!cn,⚙️ 非国内地址
+  # -------- geosite 代理组 end -------- #
+
+
+  # -------- geoip 代理组 start -------- #
+  - GEOIP,google,🔎 Google,no-resolve
+  - GEOIP,telegram,☎️ Telegram,no-resolve
+  - GEOIP,netflix,🍿 Netflix,no-resolve
+  - GEOIP,twitter,🦜 Twitter,no-resolve
+  - GEOIP,private,🔰 直连,no-resolve
+  - RULE-SET,cn_ip,🔰 直连,no-resolve
+  # -------- geoip 代理组 end -------- #
+
+  # 兜底规则
+  - DST-PORT,80/8080/443/8443,⚙️ 非国内地址
+  - MATCH,🐟 漏网之鱼
+# ----------------- 规则 end ----------------- #
+
+
+# ----------------- rule-set start ----------------- #
+rule-anchor:
+  ip: &ip { type: http, interval: 86400, behavior: ipcidr, format: mrs }
+  # domain: &domain { type: http, interval: 86400, behavior: domain, format: mrs }
+  # class: &class { type: http, interval: 86400, behavior: classical, format: text }
+
+rule-providers:
+  # 用于 route-exclude-address-set 排除中国大陆IP
+  cn_ip:
+    <<: *ip
+    url: "https://gh-proxy.org/raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs"
+# ----------------- rule-set end ----------------- #
